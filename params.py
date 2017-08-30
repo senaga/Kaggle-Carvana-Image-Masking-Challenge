@@ -1,13 +1,26 @@
 from model.u_net import get_unet_128, get_unet_256, get_unet_512, get_unet_1024
 
+### These parameters might be changed ###
 input_size = 128
-
 max_epochs = 100
-batch_size = 24
+threshold = 0.5
+### These parameters might be changed ###
 
 orig_width = 1918
 orig_height = 1280
 
-threshold = 0.5
-
+batch_size = 24
 model_factory = get_unet_128
+
+if input_size == 128:
+	batch_size = 24
+	model_factory = get_unet_128
+elif input_size == 256:
+	batch_size = 12
+	model_factory = get_unet_256
+elif input_size == 512:
+	batch_size = 6
+	model_factory = get_unet_512
+elif input_size == 1024:
+	batch_size = 3
+	model_factory = get_unet_1024
