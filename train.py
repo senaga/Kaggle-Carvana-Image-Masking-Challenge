@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import pandas as pd
+from PIL import Image
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard
 from sklearn.model_selection import train_test_split
 
@@ -93,19 +94,26 @@ def train_generator():
             end = min(start + batch_size, len(ids_train_split))
             ids_train_batch = ids_train_split[start:end]
             for id in ids_train_batch.values:
-                img = cv2.imread('input/train/{}.jpg'.format(id))
-                img = cv2.resize(img, (input_size, input_size))
-                mask = cv2.imread('input/train_masks/{}_mask.png'.format(id), cv2.IMREAD_GRAYSCALE)
-                mask = cv2.resize(mask, (input_size, input_size))
+                img = Image.open('input/train/{}.jpg'.format(id))
+                img = img.resize((input_size, input_size))
+                img = np.asarray(img)
+
+                mask = Image.open('input/train_masks/{}_mask.gif'.format(id))
+                mask = mask.resize((input_size, input_size))
+                mask = np.asarray(mask)
+
                 img = randomHueSaturationValue(img,
                                                hue_shift_limit=(-50, 50),
                                                sat_shift_limit=(-5, 5),
                                                val_shift_limit=(-15, 15))
+
                 img, mask = randomShiftScaleRotate(img, mask,
                                                    shift_limit=(-0.0625, 0.0625),
                                                    scale_limit=(-0.1, 0.1),
                                                    rotate_limit=(-0, 0))
+
                 img, mask = randomHorizontalFlip(img, mask)
+
                 mask = np.expand_dims(mask, axis=2)
                 x_batch.append(img)
                 y_batch.append(mask)
@@ -122,11 +130,15 @@ def valid_generator():
             end = min(start + batch_size, len(ids_valid_split))
             ids_valid_batch = ids_valid_split[start:end]
             for id in ids_valid_batch.values:
-                img = cv2.imread('input/train/{}.jpg'.format(id))
-                img = cv2.resize(img, (input_size, input_size))
-                mask = cv2.imread('input/train_masks/{}_mask.png'.format(id), cv2.IMREAD_GRAYSCALE)
-                mask = cv2.resize(mask, (input_size, input_size))
+                img = Image.open('input/train/{}.jpg'.format(id))
+                img = img.resize((input_size, input_size))
+                img = np.asarray(img)
+
+                mask = Image.open('input/train_masks/{}_mask.gif'.format(id))
+                mask = mask.resize((input_size, input_size))
+                mask = np.asarray(mask)
                 mask = np.expand_dims(mask, axis=2)
+
                 x_batch.append(img)
                 y_batch.append(mask)
             x_batch = np.array(x_batch, np.float32) / 255
@@ -137,22 +149,24 @@ def valid_generator():
 callbacks = [EarlyStopping(monitor='val_loss',
                            patience=8,
                            verbose=1,
-                           min_delta=1e-4),
+                           min_delta=1e-4,
+                           mode='min'),
              ReduceLROnPlateau(monitor='val_loss',
                                factor=0.1,
                                patience=4,
                                verbose=1,
-                               epsilon=1e-4),
+                               epsilon=1e-4,
+                               mode='min'),
              ModelCheckpoint(monitor='val_loss',
                              filepath='weights/best_weights.hdf5',
                              save_best_only=True,
-                             save_weights_only=True),
-             TensorBoard(log_dir='logs')]
+                             save_weights_only=True,
+                             mode='min')]#,  TensorBoard(log_dir='logs')]
 
 model.fit_generator(generator=train_generator(),
                     steps_per_epoch=np.ceil(float(len(ids_train_split)) / float(batch_size)),
                     epochs=epochs,
-                    verbose=2,
+                    verbose=1,
                     callbacks=callbacks,
                     validation_data=valid_generator(),
                     validation_steps=np.ceil(float(len(ids_valid_split)) / float(batch_size)))
