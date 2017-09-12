@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import pandas as pd
+from skimage.io import imsave
+import warnings
 from tqdm import tqdm
 
 import params
@@ -12,15 +14,15 @@ orig_height = params.orig_height
 threshold = params.threshold
 model = params.model_factory()
 
-df_test = pd.read_csv('input/sample_submission.csv')
-ids_test = df_test['img'].map(lambda s: s.split('.')[0])
+df_train = pd.read_csv('input/train_masks.csv')
+ids_test = df_train['img'].map(lambda s: s.split('.')[0])
 
 names = []
 for id in ids_test:
     names.append('{}.jpg'.format(id))
 
 ### Create bounds dictionary ###
-test_bounds = pd.read_csv('input/test_bounds.csv')
+test_bounds = pd.read_csv('input/train_bounds.csv')
 test_bounds_dict = {}
 for i, row in test_bounds.iterrows():
     test_bounds_dict[row['img'][:-4]] = (row['y_min'], row['y_max'], row['x_min'], row['x_max'])
@@ -53,7 +55,7 @@ for start in tqdm(range(0, len(ids_test), batch_size)):
 
     for id in ids_test_batch.values:
         y_min, y_max, x_min, x_max = test_bounds_dict[id]
-        img = cv2.imread('input/test/{}.jpg'.format(id))
+        img = cv2.imread('input/train/{}.jpg'.format(id))
         img = img[y_min:y_max, x_min:x_max]
         img = cv2.resize(img, (input_size, input_size))
         x_batch.append(img)
@@ -69,13 +71,21 @@ for start in tqdm(range(0, len(ids_test), batch_size)):
         y_min, y_max, x_min, x_max = test_bounds_dict[pred_name]
 
         prob = cv2.resize(pred, (x_max - x_min, y_max - y_min))
-        mask = prob > threshold
-        mask_full = np.zeros((orig_height, orig_width), dtype=np.int8)
-        mask_full[y_min:y_max, x_min:x_max] = mask
+        prob = prob * 255
+        prob = prob.astype(np.uint8)
+        # mask = prob > threshold
 
-        rle = run_length_encode(mask_full)
-        rles.append(rle)
+        mask_full = np.zeros((orig_height, orig_width), dtype=np.uint8)
+        mask_full[y_min:y_max, x_min:x_max] = prob
 
-print("Generating submission file...")
-df = pd.DataFrame({'img': names, 'rle_mask': rles})
-df.to_csv('submit/submission.csv.gz', index=False, compression='gzip')
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            imsave('submit/train_preds/' + pred_name + '.png', mask_full)
+        # cv2.imwrite(pred_name + ".png", face)
+
+        # rle = run_length_encode(mask_full)
+        # rles.append(rle)
+
+# print("Generating submission file...")
+# df = pd.DataFrame({'img': names, 'rle_mask': rles})
+# df.to_csv('submit/submission_train.csv.gz', index=False, compression='gzip')

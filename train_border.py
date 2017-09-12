@@ -9,23 +9,15 @@ from PIL import Image
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard
 from sklearn.model_selection import train_test_split
 
-import params
+import params_border as params
 
 input_size = params.input_size
 epochs = params.max_epochs
 batch_size = params.batch_size
 model = params.model_factory()
 
-df_train = pd.read_csv('input/train_masks.csv')
-ids_train = df_train['img'].map(lambda s: s.split('.')[0])
-ids_train_split, ids_valid_split = train_test_split(ids_train, test_size=0.2, random_state=42)
-
-### Create bounds dictionary ###
-train_bounds = pd.read_csv('input/train_bounds.csv')
-train_bounds_dict = {}
-for i, row in train_bounds.iterrows():
-    train_bounds_dict[row['img'][:-4]] = (row['y_min'], row['y_max'], row['x_min'], row['x_max'])
-### Create bounds dictionary ###
+ids_train = list(map(lambda x: x[:-4], os.listdir('input/train_borders/')))
+ids_train_split, ids_valid_split = train_test_split(ids_train, test_size=0.33, random_state=42)
 
 print('Training on {} samples'.format(len(ids_train_split)))
 print('Validating on {} samples'.format(len(ids_valid_split)))
@@ -103,16 +95,10 @@ def train_generator():
             y_batch = []
             end = min(start + batch_size, len(ids_train_split))
             ids_train_batch = ids_train_split[start:end]
-            for id in ids_train_batch.values:
-                y_min, y_max, x_min, x_max = train_bounds_dict[id]
-                img = cv2.imread('input/train/{}.jpg'.format(id))
-                img = img[y_min:y_max, x_min:x_max]
-                img = cv2.resize(img, (input_size, input_size))
-
-                mask = Image.open('input/train_masks/{}_mask.gif'.format(id))
-                mask = np.asarray(mask) * 255
-                mask = mask[y_min:y_max, x_min:x_max]
-                mask = cv2.resize(mask, (input_size, input_size))
+            for id in ids_train_batch:
+                img = cv2.imread('input/train_borders/{}.jpg'.format(id))
+                mask = Image.open('input/train_borders_masks/{}.bmp'.format(id))
+                mask = np.asarray(mask)
 
                 img = randomHueSaturationValue(img,
                                                hue_shift_limit=(-50, 50),
@@ -141,16 +127,10 @@ def valid_generator():
             y_batch = []
             end = min(start + batch_size, len(ids_valid_split))
             ids_valid_batch = ids_valid_split[start:end]
-            for id in ids_valid_batch.values:
-                y_min, y_max, x_min, x_max = train_bounds_dict[id]
-                img = cv2.imread('input/train/{}.jpg'.format(id))
-                img = img[y_min:y_max, x_min:x_max]
-                img = cv2.resize(img, (input_size, input_size))
-
-                mask = Image.open('input/train_masks/{}_mask.gif'.format(id))
-                mask = np.asarray(mask) * 255
-                mask = mask[y_min:y_max, x_min:x_max]
-                mask = cv2.resize(mask, (input_size, input_size))
+            for id in ids_valid_batch:
+                img = cv2.imread('input/train_borders/{}.jpg'.format(id))
+                mask = Image.open('input/train_borders_masks/{}.bmp'.format(id))
+                mask = np.asarray(mask)
                 mask = np.expand_dims(mask, axis=2)
 
                 x_batch.append(img)
@@ -172,12 +152,12 @@ callbacks = [EarlyStopping(monitor='val_loss',
                                epsilon=1e-4,
                                mode='min'),
              ModelCheckpoint(monitor='val_loss',
-                             filepath='weights/best_weights.hdf5',
+                             filepath='weights/best_weights_borders.hdf5',
                              save_best_only=True,
                              save_weights_only=True,
-                             mode='min')]#,  TensorBoard(log_dir='logs')]
+                             mode='min')]
 
-# model.load_weights('weights/best_weights.hdf5')
+model.load_weights('weights/best_weights_borders.hdf5')
 
 model.fit_generator(generator=train_generator(),
                     steps_per_epoch=np.ceil(float(len(ids_train_split)) / float(batch_size)),
