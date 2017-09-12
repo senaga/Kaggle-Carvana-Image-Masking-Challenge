@@ -3,8 +3,8 @@ This solution was based on [Heng CherKeng's code for PyTorch](https://www.kaggle
 
 | U-net | LB score |
 | ----- | -------- |
-| 128x128 | 0.991 |
-| 256x256 | 0.992 |
+| 128x128 | 0.9907 |
+| 256x256 | 0.9943 |
 | 512x512 | 0.995 |
 | 1024x1024 | 0.996 |
 
