@@ -1,3 +1,5 @@
+# https://www.kaggle.com/gaborfodor/augmentation-methods
+
 import numpy as np
 import pandas as pd
 from keras.preprocessing import image
