@@ -103,3 +103,21 @@ def random_augmentation(img, mask):
     img, mask = random_shift(img, mask, w_limit=(-0.1, 0.1), h_limit=(-0.1, 0.1), u=0.3)
     # img, mask = random_zoom(img, mask, zoom_range=(0.8, 1), u=0.3)
     return img, mask
+
+def deterministic_flip(img, u):
+    if u:
+        img = image.flip_axis(img, 1)
+    return img
+
+def deterministic_augmentation(img, u_flip, image):
+    if image:
+        img = random_channel_shift(img, limit=0.05)
+        img = random_brightness(img, limit=(-0.5, 0.5), u=0.5)
+        img = random_contrast(img, limit=(-0.5, 0.5), u=0.5)
+        img = random_saturation(img, limit=(-0.5, 0.5), u=0.5)
+        img = random_gray(img, u=0.2)
+    if image:
+        img = deterministic_flip(img, u_flip)
+    else:
+        img = deterministic_flip(img, u_flip)
+    return img

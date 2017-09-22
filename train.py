@@ -13,6 +13,7 @@ import params
 import augmentation
 
 input_size = params.input_size
+downscale = params.downscale
 epochs = params.max_epochs
 batch_size = params.batch_size
 model = params.model_factory()
@@ -35,14 +36,14 @@ print('Validating on {} samples'.format(len(ids_valid_split)))
 def get_image_and_mask(img_id, bounds=(0, params.orig_height, 0, params.orig_width)):
     y_min, y_max, x_min, x_max = bounds
 
-    img = cv2.imread('input/train/{}.jpg'.format(img_id))
+    img = cv2.imread('input/train_hq/{}.jpg'.format(img_id))
     img = img[y_min:y_max, x_min:x_max]
-    img = cv2.resize(img, (input_size, input_size))
+    img = cv2.resize(img, (input_size, input_size), None, 0, 0, downscale)
 
     mask = Image.open('input/train_masks/{}_mask.gif'.format(img_id))
     mask = np.asarray(mask) * 255
     mask = mask[y_min:y_max, x_min:x_max]
-    mask = cv2.resize(mask, (input_size, input_size))
+    mask = cv2.resize(mask, (input_size, input_size), None, 0, 0, downscale)
     mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
 
     img, mask = img / 255., mask / 255.
@@ -105,7 +106,7 @@ callbacks = [EarlyStopping(monitor='val_loss',
                              filepath='weights/best_weights.hdf5',
                              save_best_only=True,
                              save_weights_only=True,
-                             mode='min')]#,  TensorBoard(log_dir='logs')]
+                             mode='min')]
 
 # model.load_weights('weights/best_weights.hdf5')
 
