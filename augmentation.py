@@ -1,5 +1,6 @@
 # https://www.kaggle.com/gaborfodor/augmentation-methods
 
+import cv2
 import numpy as np
 import pandas as pd
 from keras.preprocessing import image
@@ -91,15 +92,38 @@ def random_saturation(img, limit=(-0.3, 0.3), u=0.5):
         img = np.clip(img, 0., 1.)
     return img
 
+def randomHueSaturationValue(image, hue_shift_limit=(-180, 180),
+                             sat_shift_limit=(-255, 255),
+                             val_shift_limit=(-255, 255), u=0.5):
+    if np.random.random() < u:
+        image = np.asarray(image * 255, dtype=np.uint8)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(image)
+        hue_shift = np.random.uniform(hue_shift_limit[0], hue_shift_limit[1])
+        h = cv2.add(h, hue_shift)
+        sat_shift = np.random.uniform(sat_shift_limit[0], sat_shift_limit[1])
+        s = cv2.add(s, sat_shift)
+        val_shift = np.random.uniform(val_shift_limit[0], val_shift_limit[1])
+        v = cv2.add(v, val_shift)
+        image = cv2.merge((h, s, v))
+        image = cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
+        image = image / 255.0
+    return image
+
 def random_augmentation(img, mask):
     img = random_channel_shift(img, limit=0.05)
     img = random_brightness(img, limit=(-0.5, 0.5), u=0.5)
     img = random_contrast(img, limit=(-0.5, 0.5), u=0.5)
-    img = random_saturation(img, limit=(-0.5, 0.5), u=0.5)
+    # img = random_saturation(img, limit=(-0.5, 0.5), u=0.5)
+    img = randomHueSaturationValue(img,
+                                   hue_shift_limit=(-50, 50),
+                                   sat_shift_limit=(-5, 5),
+                                   val_shift_limit=(-15, 15),
+                                   u=0.5)
     img = random_gray(img, u=0.2)
     img, mask = random_rotate(img, mask, rotate_limit=(-20, 20), u=0.5)
     # img, mask = random_shear(img, mask, intensity_range=(-0.3, 0.3), u=0.2)
-    img, mask = random_flip(img, mask, u=0.3)
+    img, mask = random_flip(img, mask, u=0.5)
     img, mask = random_shift(img, mask, w_limit=(-0.1, 0.1), h_limit=(-0.1, 0.1), u=0.3)
     # img, mask = random_zoom(img, mask, zoom_range=(0.8, 1), u=0.3)
     return img, mask
@@ -114,7 +138,12 @@ def deterministic_augmentation(img, u_flip, image):
         img = random_channel_shift(img, limit=0.05)
         img = random_brightness(img, limit=(-0.5, 0.5), u=0.5)
         img = random_contrast(img, limit=(-0.5, 0.5), u=0.5)
-        img = random_saturation(img, limit=(-0.5, 0.5), u=0.5)
+        # img = random_saturation(img, limit=(-0.5, 0.5), u=0.5)
+        img = randomHueSaturationValue(img,
+                                   hue_shift_limit=(-50, 50),
+                                   sat_shift_limit=(-5, 5),
+                                   val_shift_limit=(-15, 15),
+                                   u=0.5)
         img = random_gray(img, u=0.2)
     if image:
         img = deterministic_flip(img, u_flip)

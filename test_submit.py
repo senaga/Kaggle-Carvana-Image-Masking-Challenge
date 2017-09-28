@@ -49,7 +49,7 @@ def run_length_encode(mask):
 
 rles = []
 
-model.load_weights(filepath='weights/best_weights.hdf5')
+model.load_weights(filepath='weights/best_weights_1024x1024_hq.hdf5')
 
 print('Predicting on {} samples with batch_size = {}...'.format(len(ids_test), batch_size))
 for start in tqdm(range(0, len(ids_test), batch_size)):
@@ -76,7 +76,6 @@ for start in tqdm(range(0, len(ids_test), batch_size)):
         y_min, y_max, x_min, x_max = test_bounds_dict[pred_name]
 
         prob = cv2.resize(pred, (x_max - x_min, y_max - y_min), None, 0, 0, upscale)
-        # prob = gaussian_filter(prob, sigma=2)
         mask = prob > threshold
         mask_full = np.zeros((orig_height, orig_width), dtype=np.int8)
         mask_full[y_min:y_max, x_min:x_max] = mask

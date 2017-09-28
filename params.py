@@ -1,4 +1,4 @@
-from model.u_net import get_unet_128, get_unet_256, get_unet_512, get_unet_1024, get_unet_1024_heng
+from model.u_net import get_unet_128, get_unet_256, get_unet_512, get_unet_1024, get_unet_1024_hq, get_unet_1024_heng
 import cv2
 
 ### These parameters might be changed ###
@@ -27,7 +27,7 @@ elif input_size == 512:
 	model_factory = get_unet_512
 elif input_size == 1024:
 	batch_size = 3
-	model_factory = get_unet_1024
+	model_factory = get_unet_1024_hq
 	downscale = cv2.INTER_LINEAR
 	upscale = cv2.INTER_LINEAR
 

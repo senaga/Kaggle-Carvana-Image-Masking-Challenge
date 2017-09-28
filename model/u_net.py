@@ -426,7 +426,6 @@ def up_layer(input, down, n_features):
     up = Activation('relu')(up)
     return up
 
-
 def get_unet_1024(input_shape=(1024, 1024, 3),
                   num_classes=1):
     inputs = Input(shape=input_shape) # 1024
@@ -460,6 +459,74 @@ def get_unet_1024(input_shape=(1024, 1024, 3),
     #model.compile(optimizer=Adam(lr=0.0001, accumulator=3.), loss=bce_dice_loss, metrics=[dice_coeff])
 
     return model
+
+def get_unet_1024_hq(input_shape=(1024, 1024, 3),
+                  num_classes=1):
+    inputs = Input(shape=input_shape) # 1024
+    down0b, down0b_pool = down_layer(inputs, 12) # 512
+    down0a, down0a_pool = down_layer(down0b_pool, 16) # 256
+    down0, down0_pool = down_layer(down0a_pool, 32) # 128
+    down1, down1_pool = down_layer(down0_pool, 64) # 64
+    down2, down2_pool = down_layer(down1_pool, 128) # 32
+    down3, down3_pool = down_layer(down2_pool, 256) # 16
+    down4, down4_pool = down_layer(down3_pool, 512) # 8
+
+    center = Conv2D(1024, (3, 3), padding='same')(down4_pool)
+    center = BatchNormalization()(center)
+    center = Activation('relu')(center)
+    center = Conv2D(1024, (3, 3), padding='same')(center)
+    center = BatchNormalization()(center)
+    center = Activation('relu')(center)
+    # center
+
+    up4 = up_layer(center, down4, 512) # 16
+    up3 = up_layer(up4, down3, 256) # 32
+    up2 = up_layer(up3, down2, 128) # 64
+    up1 = up_layer(up2, down1, 64) # 128
+    up0 = up_layer(up1, down0, 32) # 256
+    up0a = up_layer(up0, down0a, 16) # 512
+    up0b = up_layer(up0a, down0b, 16) # 1024
+
+    classify = Conv2D(num_classes, (1, 1), activation='sigmoid')(up0b)
+    model = Model(inputs=inputs, outputs=classify)
+    model.compile(optimizer=RMSprop(lr=0.0001), loss=bce_dice_loss, metrics=[dice_coeff])
+    #model.compile(optimizer=Adam(lr=0.0001, accumulator=3.), loss=bce_dice_loss, metrics=[dice_coeff])
+
+    return model
+
+def get_unet_1024_weighted(input_shape=(1024, 1024, 3),
+                  num_classes=1):
+    inputs = Input(shape=input_shape) # 1024
+    down0b, down0b_pool = down_layer(inputs, 8) # 512
+    down0a, down0a_pool = down_layer(down0b_pool, 16) # 256
+    down0, down0_pool = down_layer(down0a_pool, 32) # 128
+    down1, down1_pool = down_layer(down0_pool, 64) # 64
+    down2, down2_pool = down_layer(down1_pool, 128) # 32
+    down3, down3_pool = down_layer(down2_pool, 256) # 16
+    down4, down4_pool = down_layer(down3_pool, 512) # 8
+
+    center = Conv2D(1024, (3, 3), padding='same')(down4_pool)
+    center = BatchNormalization()(center)
+    center = Activation('relu')(center)
+    center = Conv2D(1024, (3, 3), padding='same')(center)
+    center = BatchNormalization()(center)
+    center = Activation('relu')(center)
+    # center
+
+    up4 = up_layer(center, down4, 512) # 16
+    up3 = up_layer(up4, down3, 256) # 32
+    up2 = up_layer(up3, down2, 128) # 64
+    up1 = up_layer(up2, down1, 64) # 128
+    up0 = up_layer(up1, down0, 32) # 256
+    up0a = up_layer(up0, down0a, 16) # 512
+    up0b = up_layer(up0a, down0b, 8) # 1024
+
+    classify = Conv2D(num_classes, (1, 1), activation='sigmoid')(up0b)
+    model = Model(inputs=inputs, outputs=classify)
+    model.compile(optimizer=RMSprop(lr=0.0001), loss=weighted_dice_loss, metrics=[dice_coeff])
+
+    return model
+
 
 
 # https://www.kaggle.com/c/carvana-image-masking-challenge/discussion/38125

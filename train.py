@@ -20,7 +20,7 @@ model = params.model_factory()
 
 df_train = pd.read_csv('input/train_masks.csv')
 ids_train = df_train['img'].map(lambda s: s.split('.')[0])
-ids_train_split, ids_valid_split = train_test_split(ids_train, test_size=0.2, random_state=42)
+ids_train_split, ids_valid_split = train_test_split(ids_train, test_size=0.15, random_state=42)
 
 ### Create bounds dictionary ###
 train_bounds = pd.read_csv('input/train_bounds.csv')

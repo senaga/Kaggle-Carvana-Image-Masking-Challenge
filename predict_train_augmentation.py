@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from scipy.ndimage.filters import gaussian_filter
-from deterministic_augmentation import deterministic_augmentation
+from augmentation import deterministic_augmentation
 
 import params
 
@@ -47,46 +47,33 @@ def run_length_encode(mask):
     rle = ' '.join([str(r) for r in runs])
     return rle
 
-
 rles = []
 
-model.load_weights(filepath='weights/best_weights.hdf5')
+model.load_weights(filepath='weights/best_weights_1024x1024_hq.hdf5')
 
 print('Predicting on {} samples with batch_size = {}...'.format(len(ids_test), batch_size))
 for start in tqdm(range(0, len(ids_test))):
     x_batch = []
-    batch_names = []
     id = ids_test[start]
 
     y_min, y_max, x_min, x_max = test_bounds_dict[id]
-    img = cv2.imread('input/train/{}.jpg'.format(id))
+    img = cv2.imread('input/train_hq/{}.jpg'.format(id))
     img = img[y_min:y_max, x_min:x_max]
     img = cv2.resize(img, (input_size, input_size), None, 0, 0, downscale) / 255.0
-    batch_names.append(id)
  
     transform_params = []
-    # transform_params.append((0.0, 0, 0, False, False, False)) # original image is not augmented
     transform_params.append(False) # original image is not augmented
     x_batch.append(img)
 
     for augment in range(batch_size - 1):
-        # theta = np.random.uniform(-20.0, 20.0)
-        # wshift = np.random.uniform(-0.1, 0.1)
-        # hshift = np.random.uniform(-0.1, 0.1)
-        # u_rotate = np.random.random() < 0.5
         u_flip = np.random.random() < 0.5
-        # u_shift = np.random.random() < 0.3
-        # x_batch.append(deterministic_augmentation(img, theta, wshift, hshift, u_rotate, u_flip, u_shift, image = True))
         x_batch.append(deterministic_augmentation(img, u_flip, image = True))
-        # transform_params.append((theta, wshift, hshift, u_rotate, u_flip, u_shift))
         transform_params.append(u_flip)
     x_batch = np.array(x_batch, np.float32)
     preds = model.predict_on_batch(x_batch)
     preds = np.squeeze(preds, axis=3)
     
     for i in range(preds.shape[0]):
-        # theta, wshift, hshift, u_rotate, u_flip, u_shift = transform_params[i]
-        # preds[i, ...] = deterministic_augmentation(preds[i, ...], -theta, -wshift, -hshift, u_rotate, u_flip, u_shift, image = False)
         u_flip = transform_params[i]
         preds[i, ...] = deterministic_augmentation(preds[i, ...], u_flip, image = False)
     pred = np.zeros((preds.shape[1], preds.shape[2]))
@@ -95,10 +82,8 @@ for start in tqdm(range(0, len(ids_test))):
 
     pred /= float(batch_size)
 
-    pred_name = batch_names[0]
-    y_min, y_max, x_min, x_max = test_bounds_dict[pred_name]
+    y_min, y_max, x_min, x_max = test_bounds_dict[id]
     prob = cv2.resize(pred, (x_max - x_min, y_max - y_min), None, 0, 0, upscale)
-    prob = gaussian_filter(prob, sigma=2)
     mask = prob > threshold
     mask_full = np.zeros((orig_height, orig_width), dtype=np.int8)
     mask_full[y_min:y_max, x_min:x_max] = mask
